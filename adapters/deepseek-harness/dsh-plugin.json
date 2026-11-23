@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.2.0",
+  "ecosystem_contract_version": "1.2.0",
+  "name": "best-security-governance-architects",
+  "suite_id": "security-governance",
+  "version": "1.2.0",
+  "description": "CPU-first pre-merge security and governance suite (suite_id: security-governance) combining deterministic SAST/SCA/secret/IaC scanners with Clean-Room cross-model semantic auditors.",
+  "license": "MIT",
+  "suite_manifest": "./references/suite.yaml",
+  "clean_room_required": true,
+  "fail_closed_on_missing_required_tool": true,
+  "execution_profile": {
+    "modality": "cpu_first_plus_clean_room_semantic",
+    "recommended_models": [
+      "deepseek-v4-pro",
+      "deepseek-flash"
+    ],
+    "pre_scanner": "./tools/sec_cpu_scanner.py",
+    "sarif_ingestor": "./tools/sarif_ingest.py",
+    "unverified_marker": "UNVERIFIED_MISSING_TOOL",
+    "max_operational_brief_bytes": 25600
+  },
+  "entrypoints": {
+    "director": "./SKILL.md",
+    "control_matrix": "./references/control-matrix.yaml",
+    "pre_scanner": "./tools/sec_cpu_scanner.py",
+    "sarif_ingestor": "./tools/sarif_ingest.py",
+    "modules_dir": "./references/modules",
+    "auditors_dir": "./references/auditors"
+  },
+  "modes": {
+    "director-only": {
+      "active_skills": [
+        "security-director"
+      ],
+      "lazy_references": [
+        "references/modules/*/BRIEF.md",
+        "references/modules/*/PROFILE.md",
+        "references/modules/*/SEC.md",
+        "references/auditors/*/rules.yaml",
+        "references/auditors/*/AUDITOR.md",
+        "references/control-matrix.yaml",
+        "references/suite.yaml"
+      ]
+    }
+  }
+}

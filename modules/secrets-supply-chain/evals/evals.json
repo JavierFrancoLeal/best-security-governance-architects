@@ -1,0 +1,108 @@
+{
+  "skill_name": "secrets-supply-chain",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "ssc_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_01_canary_secret.js",
+      "layer": "cpu",
+      "prompt": "Scan billing debug endpoint for hardcoded canary secrets, PEM headers, and .env leaks.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:secrets-supply-chain:SEC-CRED-001",
+          "security-governance:secrets-supply-chain:SEC-CRED-002",
+          "security-governance:secrets-supply-chain:SEC-CRED-003"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 3,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "ssc_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_09_privileged_container.yaml",
+      "layer": "cpu",
+      "prompt": "Audit Kubernetes Deployment image tag pinning.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:secrets-supply-chain:SEC-SUP-TAG-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "ssc_tp_03",
+      "case_type": "fail_closed_tooling",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_01_canary_secret.js",
+      "layer": "cpu",
+      "prompt": "Execute secrets-supply-chain gate when required secret scanner is absent.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+        ],
+        "expected_evidence_tier": "UNVERIFIED_MISSING_TOOL",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      },
+      "simulate_missing_tools": [
+        "gitleaks"
+      ]
+    },
+    {
+      "id": "ssc_nm_01",
+      "case_type": "near_miss",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_02_sanitized_diagnostic_export.js",
+      "layer": "cpu",
+      "prompt": "Scan diagnostic redaction helper referencing apiKey and privateKey regexes.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "ssc_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/semantic/sem_06_self_auditing_governance.yaml",
+      "layer": "cpu",
+      "prompt": "Verify digest pinning in CI workflow manifest.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "skill_name": "agentic-ai-threats",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "agt_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_07_prompt_only_guard.js",
+      "layer": "cpu",
+      "prompt": "Audit ops agent database tool wrapper for prompt-only safety barriers.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:agentic-ai-threats:SEC-AGT-PROMPTGUARD-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "agt_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_08_llm_output_to_exec.py",
+      "layer": "cpu",
+      "prompt": "Scan diagnostic agent handler for unsafe eval and shell=True on LLM completions.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:agentic-ai-threats:SEC-AGT-OUTEXEC-001",
+          "security-governance:agentic-ai-threats:SEC-AGT-OUTEXEC-002"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 2,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "agt_tp_03",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_05_lethal_trifecta_agent.ts",
+      "layer": "semantic",
+      "prompt": "Clean-room audit executive briefing agent for Lethal Trifecta exfiltration.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:agentic-ai-threats:SEM-TRIFECTA-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "agt_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_03_safe_agent_tool_allowlist.ts",
+      "layer": "cpu",
+      "prompt": "Verify allowlisted TypeScript agent dispatcher with HMAC human approval.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "agt_hn_02",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/semantic/sem_08_clean_checkpointed_agent.ts",
+      "layer": "semantic",
+      "prompt": "Clean-room audit Dual-LLM quarantined webpage reader and approved email sender.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "agt_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tp_03_cmd_injection_and_ssrf.py",
+      "layer": "cpu",
+      "prompt": "Evaluate agentic-ai-threats scope on non-LLM subprocess utility.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

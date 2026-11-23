@@ -1,0 +1,61 @@
+ecosystem_contract_version: "1.2.0"
+suite_id: "security-governance"
+repo_name: "best-security-governance-architects"
+director_slug: "security-director"
+judgment_file: "SEC.md"
+schema_version: "1.2.0"
+synthesis_mode: "conjunctive_gate"
+score_heuristic: null
+clean_room_required: true
+sdlc_scope:
+  primary_artifacts:
+    - "**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,sql}"
+    - "**/Dockerfile*"
+    - "**/*.{tf,tfvars,hcl,yaml,yml,json,toml}"
+    - "**/package-lock.json"
+    - "**/pnpm-lock.yaml"
+    - "**/yarn.lock"
+    - "**/poetry.lock"
+    - "**/uv.lock"
+    - "**/requirements*.txt"
+    - "**/go.sum"
+    - "**/.github/workflows/*.{yml,yaml}"
+    - "**/.env*"
+  sdlc_stages: ["plan", "design", "build", "verify", "secure"]
+  explicit_out_of_scope:
+    - "sre_observability"
+    - "production_release_rollback"
+    - "cloud_finops"
+    - "live_penetration_testing_red_teaming"
+    - "runtime_waf_rasp_incident_response"
+    - "safety_critical_certification_do178c_iso26262_aspice_4_0_fda_csa"
+    - "formal_legal_counsel_or_statutory_compliance_signoff"
+execution_modes:
+  fast_pr_gate: "Run tools/sec_cpu_scanner.py + required Tier B SARIF scanners via tools/sarif_ingest.py; enforce fail-closed check; route via 3D risk gate."
+  architecture_review: "Run Tier A + Tier B deterministic CPU scanners via tools/sarif_ingest.py, activate STRIDE x Attack Surface functional control briefs, run Clean-Room cross-model semantic auditors when triggered, and emit Verdict Envelope v1.2.0."
+tooling:
+  pre_scanner: "tools/sec_cpu_scanner.py"
+  required_tools: ["semgrep", "gitleaks", "osv-scanner", "trivy"]
+  optional_tools: ["conftest", "zizmor", "mcp-scan"]
+  accepted_formats: ["json", "sarif", "exit_code"]
+  fail_closed_on_missing_required_tool: true
+roster_summary:
+  module_type: "functional_controls"
+  total_modules: 7
+  auditors: 2
+  regimes: 0
+domain_extensions:
+  - "threat_surfaces_touched"
+  - "risk_gate_tier"
+  - "cross_model_auditor_verified"
+  - "human_signoff"
+  - "evidence_contribution_toward"
+handoff_targets:
+  - suite_id: "systems-harness"
+    trigger_condition: "PR contains destructive SQL/ORM schema migrations, lock-unsafe DDL, or structural module boundary violations requiring ARCH.md harness verification (security-governance audits DORA Art. 9(4)(e) change-traceability only)."
+  - suite_id: "verification-eval"
+    trigger_condition: "Security fix, authorization invariant, or agentic guardrail lacks executable negative/regression test coverage or holdout adversarial eval assertions."
+  - suite_id: "spec-context"
+    trigger_condition: "PR alters tenant trust boundaries, role privilege models, or PII retention semantics without a documented specification or acceptance contract."
+  - suite_id: "ui-ux"
+    trigger_condition: "Security confirmation dialog, consent control, or destructive-action warning obscures actionable parameters from the human approver."

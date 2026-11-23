@@ -1,0 +1,124 @@
+{
+  "skill_name": "authn-authz-boundaries",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "authz_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_06_insecure_cookie_cors.js",
+      "layer": "cpu",
+      "prompt": "Audit session cookie flags and wildcard credentialed CORS headers.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:authn-authz-boundaries:SEC-AUTH-COOKIE-001",
+          "security-governance:authn-authz-boundaries:SEC-AUTH-CORS-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "authz_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_10_unverified_jwt.js",
+      "layer": "cpu",
+      "prompt": "Audit bearer JWT handler for unverified jwt.decode usage.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:authn-authz-boundaries:SEC-AUTH-JWT-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "authz_tp_03",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_01_idor_missing_ownership.js",
+      "layer": "semantic",
+      "prompt": "Clean-room audit GET /api/invoices/:id for missing tenant ownership predicate.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:authn-authz-boundaries:SEM-IDOR-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "authz_tp_04",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_02_confused_deputy_ipc.js",
+      "layer": "semantic",
+      "prompt": "Clean-room audit Electron IPC handler trust boundaries.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:authn-authz-boundaries:SEM-IPC-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "authz_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_04_secure_cookie_and_authz.js",
+      "layer": "cpu",
+      "prompt": "Verify hardened __Host- cookie, exact-origin CORS, RS256 jwt.verify, and owner check.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "authz_hn_02",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/semantic/sem_07_clean_tenant_isolated_authz.js",
+      "layer": "semantic",
+      "prompt": "Clean-room audit state-changing invoice void route for BOLA and CSRF.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

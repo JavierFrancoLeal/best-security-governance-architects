@@ -1,0 +1,142 @@
+schema_version: "1.2.0"
+suite_id: "security-governance"
+module_id: "auditor-agentic-abuse"
+clean_room_required: true
+synthesis_mode: "conjunctive_gate"
+cpu_precondition:
+  required_scanners: ["semgrep", "gitleaks", "osv-scanner", "trivy"]
+  fail_closed_blocking_id: "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+  non_sast_filter: "Exclude deterministic SARIF alerts; audit indirect prompt injection paths, MCP tool poisoning, ambient agent credentials, actuation/anti-self-auditing guardrails, and toxic tool-flow graphs."
+rules:
+  - id: "agentic-01"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-01"
+    name: "Indirect Prompt Injection Control-Data Confluence"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "greshake"
+    invariant_id: "greshake-inv-01"
+    source_id: "SRC-GRESHAKE-2023"
+    cwe_owasp: ["CWE-74", "CWE-1427", "OWASP-LLM01:2025"]
+    applies_to: ["**/agents/**", "**/prompts/**", "**/rag/**", "**/llm/**", "**/tools/**"]
+    non_sast_rationale: "Prompt string interpolation and LLM message arrays look syntactically identical for trusted vs. untrusted sources; SAST lacks data-provenance trust tiers."
+    diff_inspection_protocol: "Trace external untrusted content (RAG chunks, web pages, emails, public issues, third-party tool outputs) into prompt buffers of LLMs holding tool-calling or write capabilities; verify structural trust-tier isolation."
+    false_positive_exemption: "Suppress if untrusted content is processed exclusively by a tool-less Quarantined LLM or reference-tokenized memory inaccessible to the Privileged LLM control plane."
+    negative_control: "Suppress if untrusted content is processed exclusively by a tool-less Quarantined LLM or reference-tokenized memory inaccessible to the Privileged LLM control plane."
+    required_evidence: "Exact file:line tracing untrusted external data retrieval into the message buffer of a tool-enabled LLM invocation."
+    mandatory_remediation: "Segregate untrusted data into a tool-less quarantined execution tier and pass outputs only as non-executable references."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:ipi-control-data-confluence"
+
+  - id: "agentic-02"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-02"
+    name: "Ambient Confused-Deputy Credentials in Agent Tool Runners"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "saltzer-schroeder"
+    invariant_id: "saltzer-schroeder-inv-05"
+    source_id: "SRC-SALTZER-1975"
+    cwe_owasp: ["CWE-269", "CWE-441", "OWASP-LLM06:2025"]
+    applies_to: ["**/agents/**", "**/mcp/**", "**/tools/**", "**/connectors/**", "**/oauth/**"]
+    non_sast_rationale: "Credential calls look syntactically valid to gitleaks and semgrep; detecting confused-deputy delegation requires comparing caller authority to injected tool token scope."
+    diff_inspection_protocol: "Inspect agent tool connectors for static/broad service-account tokens, wildcard OAuth/DB roles, or ambient operator credentials used on behalf of untrusted or lower-privilege callers."
+    false_positive_exemption: "Suppress if tool invocation exchanges or attenuates credentials per task to minimal read/write scope and enforces caller authorization outside the LLM."
+    negative_control: "Suppress if tool invocation exchanges or attenuates credentials per task to minimal read/write scope and enforces caller authorization outside the LLM."
+    required_evidence: "Exact file:line where static/broad credential or wildcard OAuth/DB role is injected into an autonomous tool executor."
+    mandatory_remediation: "Enforce per-task attenuated capabilities in the infrastructure controller; forbid ambient multi-resource credentials in agent tool runners."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:agent-confused-deputy-authority"
+
+  - id: "agentic-03"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-03"
+    name: "Unpinned MCP Tool Metadata Poisoning and Cross-Server Shadowing"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "beurer-kellner"
+    invariant_id: "beurer-kellner-inv-01"
+    source_id: "SRC-BEURER-KELLNER-2025B"
+    cwe_owasp: ["CWE-94", "OWASP-MCP03:2025", "OWASP-LLM01:2025"]
+    applies_to: ["**/mcp/**", "**/*mcp*.{json,yaml,yml,ts,py,go}", "**/agents/**", "**/plugins/**"]
+    non_sast_rationale: "SAST/SCA treats MCP schema loading as benign configuration data and ignores natural-language prompt payloads or cross-server shadowing inside tool descriptions."
+    diff_inspection_protocol: "Inspect MCP host/client loaders registering remote or third-party tool descriptions into model prompts; verify cryptographic digest pinning (rug-pull detection) and per-server namespace isolation."
+    false_positive_exemption: "Suppress if all MCP tool definitions are pinned to verified immutable hashes/digests and isolated per server namespace with schema inspection before prompt registration."
+    negative_control: "Suppress if all MCP tool definitions are pinned to verified immutable hashes/digests and isolated per server namespace with schema inspection before prompt registration."
+    required_evidence: "Exact file:line of dynamic MCP tool-list ingestion passed unpinned into model tool specifications."
+    mandatory_remediation: "Pin approved MCP tool descriptions by cryptographic digest, reject unverified runtime schema mutations, and namespace-isolate multi-server tools."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:mcp-unpinned-tool-poisoning"
+
+  - id: "agentic-04"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-04"
+    name: "Improper LLM Output Handling into Active or Exfiltration Sinks"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "greshake"
+    invariant_id: "greshake-inv-02"
+    source_id: "SRC-GRESHAKE-2023"
+    cwe_owasp: ["CWE-79", "CWE-78", "CWE-22", "OWASP-LLM05:2025"]
+    applies_to: ["**/agents/**", "**/llm/**", "**/render/**", "**/tools/**", "**/exec/**"]
+    non_sast_rationale: "LLM SDK completions are rarely built-in taint sources in generic SAST packs, and Markdown-image/URL passive exfiltration is semantic rendering behavior."
+    diff_inspection_protocol: "Trace LLM completion fields into shell commands, dynamic SQL, file paths, package installers, or HTML/Markdown renderers; verify deterministic schema/allowlist sanitization prior to sink execution."
+    false_positive_exemption: "Suppress if LLM output is constrained to an enumerated schema validated by a deterministic allowlist parser and rendered with outbound images/links stripped under strict CSP."
+    negative_control: "Suppress if LLM output is constrained to an enumerated schema validated by a deterministic allowlist parser and rendered with outbound images/links stripped under strict CSP."
+    required_evidence: "Exact file:line of LLM completion field reaching execution sink, filesystem path builder, or unsanitized HTML/Markdown renderer."
+    mandatory_remediation: "Treat all LLM outputs as untrusted; enforce strict schema allowlists before execution and block arbitrary external URLs/images in rendered output."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:llm-improper-output-sink"
+
+  - id: "agentic-05"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-05"
+    name: "Unconstrained Actuation Gate & Anti-Self-Auditing Separation Violation"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "leveson-sec"
+    invariant_id: "leveson-sec-inv-01"
+    source_id: "SRC-LEVESON-2011"
+    cwe_owasp: ["CWE-285", "CWE-778", "OWASP-LLM06:2025"]
+    applies_to: ["**/agents/**", "**/actions/**", "**/executors/**", "**/workflows/**", "**/mcp/**", "**/.github/workflows/**", "**/.security*"]
+    non_sast_rationale: "Static tools see standard CLI/SDK calls; verifying an independent non-LLM control gate, parameter-visible human approval, and Separation of Powers preventing a builder agent from tampering with its own tests, evals, rules, or audit logs requires control-loop reasoning."
+    diff_inspection_protocol: "Verify (1) high-impact actuations (deletions, transfers, external writes/PRs, credential reads) pass through a deterministic non-LLM policy gate and full-parameter human approval, AND (2) no autonomous builder agent has write permissions over its own tests/, evals/, rules.yaml, policy files, validators/, or audit/verdict logs, nor self-attests SHIP in the same session."
+    false_positive_exemption: "Suppress if an out-of-band deterministic policy controller gates tool calls with full-parameter human confirmation AND builder write scopes strictly exclude tests/, evals/, rules.yaml, policy files, and append-only audit sinks evaluated by an isolated Clean-Room auditor."
+    negative_control: "Suppress if an out-of-band deterministic policy controller gates the tool call, requires full-parameter human confirmation, and enforces read-only isolation over tests, evals, policy rules, and audit logs."
+    required_evidence: "Exact file:line of unguarded destructive/external actuation, obfuscated approval parameters, or builder write/self-attestation scope spanning tests, evals, rules.yaml, policy files, or audit logs."
+    mandatory_remediation: "Interpose a deterministic control-loop policy gate with full-parameter human confirmation, revoke builder write access to tests/evals/rules.yaml/policy/audit logs, and require isolated Clean-Room verification."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:missing-actuation-or-self-audit-gate"
+
+  - id: "agentic-06"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-06"
+    name: "Toxic Agent Flow / Lethal Trifecta Composition"
+    severity: "MAJOR"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "beurer-kellner"
+    invariant_id: "beurer-kellner-inv-02"
+    source_id: "SRC-BEURER-KELLNER-2025C"
+    cwe_owasp: ["CWE-200", "OWASP-LLM02:2025", "OWASP-LLM06:2025"]
+    applies_to: ["**/agents/**", "**/mcp/**", "**/toolsets/**", "**/orchestrator/**"]
+    non_sast_rationale: "Each individual tool (read private data, fetch external page, send email/PR) is benign alone; the toxic exfiltration flow exists only in the composed runtime tool graph."
+    diff_inspection_protocol: "Inspect agent session toolset registrations for simultaneous presence of (1) private data access, (2) untrusted external content ingestion, and (3) external communication or public write sinks without deterministic flow partitioning."
+    false_positive_exemption: "Suppress if deterministic flow guardrails enforce single-tenant/single-repo session confinement or eliminate at least one leg of the lethal trifecta."
+    negative_control: "Suppress if deterministic flow guardrails enforce single-tenant/single-repo session confinement or eliminate at least one leg of the lethal trifecta."
+    required_evidence: "Exact file:line of agent toolset registration naming all three lethal-trifecta capabilities plus absence of cross-boundary flow enforcement."
+    mandatory_remediation: "Break the lethal trifecta or enforce deterministic runtime flow policies (e.g., disallowing cross-repository or cross-trust-zone tool transitions per session)."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:toxic-flow-lethal-trifecta"
+
+  - id: "agentic-07"
+    canonical_id: "security-governance:auditor-agentic-abuse:agentic-07"
+    name: "Probabilistic-Only Prompt Guardrails Without Structural Isolation"
+    severity: "MAJOR"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "beurer-kellner"
+    invariant_id: "beurer-kellner-inv-03"
+    source_id: "SRC-BEURER-KELLNER-2025A"
+    cwe_owasp: ["CWE-693", "OWASP-LLM01:2025"]
+    applies_to: ["**/agents/**", "**/guardrails/**", "**/prompts/**", "**/orchestrator/**"]
+    non_sast_rationale: "Structural control-flow vs. data-flow separation across Dual-LLM/Plan-Then-Execute/Action-Selector components cannot be verified via regex or single-file AST patterns."
+    diff_inspection_protocol: "Inspect prompt-injection defense boundaries to verify deterministic architectural containment (Action-Selector, Plan-Then-Execute, Dual LLM reference-only memory) rather than prompt-only or ML-classifier-only checks."
+    false_positive_exemption: "Suppress if deterministic architectural pattern constrains control flow independently of model compliance and prevents quarantined text from steering privileged tool selection."
+    negative_control: "Suppress if deterministic architectural pattern constrains control flow independently of model compliance and prevents quarantined text from steering privileged tool selection."
+    required_evidence: "Exact file:line of prompt-only/classifier-only defense boundary or tainted feedback loop from quarantined model into privileged planner."
+    mandatory_remediation: "Replace probabilistic-only boundaries with deterministic control-flow isolation (Plan-Then-Execute, Action-Selector, or Dual LLM reference-only memory)."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:probabilistic-only-agent-defense"

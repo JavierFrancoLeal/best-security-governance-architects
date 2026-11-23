@@ -1,0 +1,105 @@
+{
+  "skill_name": "injection-input-validation",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "inj_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_02_sqli_and_xss.js",
+      "layer": "cpu",
+      "prompt": "Audit SQL template interpolation and innerHTML DOM sinks.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:injection-input-validation:SEC-INJ-SQLI-001",
+          "security-governance:injection-input-validation:SEC-INJ-XSS-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 2,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "inj_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_03_cmd_injection_and_ssrf.py",
+      "layer": "cpu",
+      "prompt": "Audit Python subprocess shell=True and unvalidated requests.get SSRF.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:injection-input-validation:SEC-INJ-CMD-001",
+          "security-governance:injection-input-validation:SEC-INJ-SSRF-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 2,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "inj_tp_03",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_04_parser_differential_ssrf.py",
+      "layer": "semantic",
+      "prompt": "Clean-room audit webhook URL validator for parser-differential SSRF.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:injection-input-validation:SEM-SSRFDIFF-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "inj_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_01_parameterized_and_escaped.js",
+      "layer": "cpu",
+      "prompt": "Verify parameterized SQL query and textContent DOM assignment.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "inj_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_04_secure_cookie_and_authz.js",
+      "layer": "cpu",
+      "prompt": "Evaluate injection-input-validation on clean authz middleware.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

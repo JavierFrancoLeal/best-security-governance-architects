@@ -1,0 +1,108 @@
+{
+  "skill_name": "security-director",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "dir_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_01_canary_secret.js",
+      "layer": "cpu",
+      "prompt": "Run security-director CPU-first pre-merge audit on billing debug endpoint.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:secrets-supply-chain:SEC-CRED-001",
+          "security-governance:secrets-supply-chain:SEC-CRED-002",
+          "security-governance:secrets-supply-chain:SEC-CRED-003"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 3,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dir_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_06_self_auditing_governance.yaml",
+      "layer": "semantic",
+      "prompt": "Run security-director Clean-Room audit on autonomous self-certifying CI workflow.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:auditor-agentic-abuse:agentic-05"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dir_tp_03",
+      "case_type": "fail_closed_tooling",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_09_privileged_container.yaml",
+      "layer": "cpu",
+      "prompt": "Run security-director when trivy is missing from CI PATH.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+        ],
+        "expected_evidence_tier": "UNVERIFIED_MISSING_TOOL",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      },
+      "simulate_missing_tools": [
+        "trivy"
+      ]
+    },
+    {
+      "id": "dir_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_04_secure_cookie_and_authz.js",
+      "layer": "cpu",
+      "prompt": "Run security-director on hardened cookie, CORS, JWT, and ownership handler.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dir_hn_02",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/semantic/sem_08_clean_checkpointed_agent.ts",
+      "layer": "semantic",
+      "prompt": "Run security-director on Dual-LLM quarantined briefing workflow.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

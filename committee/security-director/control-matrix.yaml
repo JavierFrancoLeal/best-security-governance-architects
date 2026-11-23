@@ -1,0 +1,47 @@
+schema_version: "1.2.0"
+suite_id: "security-governance"
+regimes: 0
+routing_model: "stride_x_attack_surface"
+surfaces:
+  - id: "secrets_supply_chain"
+    globs: ["**/.env*", "**/package*.json", "**/*lock*", "**/requirements*.txt", "**/go.{mod,sum}", "**/Dockerfile*", "**/.github/workflows/**"]
+    stride: ["InfoDisclosure", "Tampering", "Repudiation"]
+    modules: ["secrets-supply-chain"]
+    auditors: []
+    tier: "AUTO_PASS_ON_CLEAN_CPU"
+  - id: "injection_parsers"
+    globs: ["**/api/**", "**/handlers/**", "**/webhooks/**", "**/parsers/**", "**/sql/**"]
+    stride: ["Tampering", "EoP", "DoS"]
+    modules: ["injection-input-validation"]
+    auditors: ["auditor-authz-intent"]
+    tier: "CLEAN_ROOM_SEMANTIC_AUDIT"
+  - id: "authn_authz"
+    globs: ["**/auth/**", "**/session*", "**/jwt*", "**/rbac/**", "**/policy/**", "**/routes/**", "**/electron/**", "**/preload*"]
+    stride: ["Spoofing", "EoP", "InfoDisclosure"]
+    modules: ["authn-authz-boundaries"]
+    auditors: ["auditor-authz-intent"]
+    tier: "CLEAN_ROOM_SEMANTIC_AUDIT"
+  - id: "crypto_keys"
+    globs: ["**/crypto/**", "**/kms/**", "**/tls*", "**/tokens/**"]
+    stride: ["InfoDisclosure", "Tampering"]
+    modules: ["crypto-key-management"]
+    auditors: ["auditor-authz-intent"]
+    tier: "CLEAN_ROOM_SEMANTIC_AUDIT"
+  - id: "data_pii"
+    globs: ["**/logging*", "**/telemetry*", "**/cache/**", "**/rag/**", "**/schemas/**", "**/models/**"]
+    stride: ["InfoDisclosure", "Tampering"]
+    modules: ["data-isolation-pii"]
+    auditors: ["auditor-authz-intent"]
+    tier: "CLEAN_ROOM_SEMANTIC_AUDIT"
+  - id: "agentic_mcp"
+    globs: ["**/agents/**", "**/prompts/**", "**/mcp/**", "**/tools/**", "**/llm/**"]
+    stride: ["EoP", "Tampering", "InfoDisclosure", "DoS"]
+    modules: ["agentic-ai-threats"]
+    auditors: ["auditor-agentic-abuse", "auditor-authz-intent"]
+    tier: "MANDATORY_NAMED_HUMAN_SIGNOFF"
+  - id: "governance_iac"
+    globs: ["**/*.tf", "**/k8s/**", "**/helm/**", "**/audit/**", "**/migrations/**", "CODEOWNERS", "**/.security*"]
+    stride: ["EoP", "Repudiation", "Tampering"]
+    modules: ["systemic-governance-audit"]
+    auditors: ["auditor-agentic-abuse"]
+    tier: "MANDATORY_NAMED_HUMAN_SIGNOFF"

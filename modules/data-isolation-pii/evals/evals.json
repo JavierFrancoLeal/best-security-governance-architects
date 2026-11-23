@@ -1,0 +1,107 @@
+{
+  "skill_name": "data-isolation-pii",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "dpi_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_05_pii_in_logs.js",
+      "layer": "cpu",
+      "prompt": "Audit login handler for raw Authorization/password and PII stdout logging.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:data-isolation-pii:SEC-DATA-LOG-001",
+          "security-governance:data-isolation-pii:SEC-DATA-PII-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dpi_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_01_idor_missing_ownership.js",
+      "layer": "semantic",
+      "prompt": "Clean-room audit cross-tenant invoice disclosure risk.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:data-isolation-pii:SEM-DPI-01"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dpi_tp_03",
+      "case_type": "fail_closed_tooling",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_05_pii_in_logs.js",
+      "layer": "cpu",
+      "prompt": "Run PII log gate when semgrep is missing.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+        ],
+        "expected_evidence_tier": "UNVERIFIED_MISSING_TOOL",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      },
+      "simulate_missing_tools": [
+        "semgrep"
+      ]
+    },
+    {
+      "id": "dpi_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_02_sanitized_diagnostic_export.js",
+      "layer": "cpu",
+      "prompt": "Verify diagnostic redactor scrubs sensitive field names without false positives.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "dpi_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_01_parameterized_and_escaped.js",
+      "layer": "cpu",
+      "prompt": "Evaluate data-isolation-pii on clean SQL/DOM helper.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

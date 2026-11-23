@@ -1,0 +1,107 @@
+{
+  "skill_name": "systemic-governance-audit",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "sga_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_09_privileged_container.yaml",
+      "layer": "cpu",
+      "prompt": "Audit Kubernetes Deployment for privileged: true and runAsUser: 0.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:systemic-governance-audit:SEC-INFRA-PRIV-001",
+          "security-governance:systemic-governance-audit:SEC-INFRA-ROOT-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "sga_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_06_self_auditing_governance.yaml",
+      "layer": "semantic",
+      "prompt": "Clean-room audit CI workflow for builder self-auditing and policy write access.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:systemic-governance-audit:SEM-SELFAUDIT-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "sga_tp_03",
+      "case_type": "fail_closed_tooling",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_09_privileged_container.yaml",
+      "layer": "cpu",
+      "prompt": "Run governance IaC gate when trivy is unavailable.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+        ],
+        "expected_evidence_tier": "UNVERIFIED_MISSING_TOOL",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      },
+      "simulate_missing_tools": [
+        "trivy"
+      ]
+    },
+    {
+      "id": "sga_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/semantic/sem_07_clean_tenant_isolated_authz.js",
+      "layer": "semantic",
+      "prompt": "Verify external append-only audit sink on clean invoice route.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "sga_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_03_safe_agent_tool_allowlist.ts",
+      "layer": "cpu",
+      "prompt": "Evaluate systemic-governance-audit on isolated agent dispatcher.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+---
+description: Security & Governance Pre-Merge Gate (security-governance v1.2.0) — CPU-first SAST/SCA/secret/IaC scanning and Clean-Room semantic auditing.
+globs:
+  - "**/auth/**"
+  - "**/rbac/**"
+  - "**/api/**"
+  - "**/crypto/**"
+  - "**/agents/**"
+  - "**/mcp/**"
+  - "**/Dockerfile*"
+  - "**/*.tf"
+  - "**/k8s/**"
+  - "**/package-lock.json"
+  - "**/uv.lock"
+  - "**/go.sum"
+  - "**/.github/workflows/**"
+alwaysApply: false
+---
+
+# Security Director Rule (`security-governance`, v1.2.0)
+
+1. Execute `python3 .cursor/skills/security-director/tools/sec_cpu_scanner.py --root . --format json` and normalize Tier B SARIF (`semgrep`, `gitleaks`, `osv-scanner`, `trivy`) via `sarif_ingest.py` before semantic review.
+2. Fail closed if any required scanner is missing (`UNVERIFIED_MISSING_TOOL`, cap verdict at `ITERATE`).
+3. Load only active `.cursor/skills/security-director/references/modules/<slug>/BRIEF.md` briefs matching `control-matrix.yaml` (`<= 25,600 B`).
+4. Run Clean-Room cross-model auditors (`auditor-authz-intent`, `auditor-agentic-abuse`) without builder chain-of-thought and terminate with `Verdict Envelope v1.2.0`.

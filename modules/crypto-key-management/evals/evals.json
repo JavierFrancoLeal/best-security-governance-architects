@@ -1,0 +1,108 @@
+{
+  "skill_name": "crypto-key-management",
+  "schema_version": "1.1.0",
+  "suite_id": "security-governance",
+  "evals": [
+    {
+      "id": "cry_tp_01",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_04_weak_crypto_and_tls.js",
+      "layer": "cpu",
+      "prompt": "Audit weak MD5 hashing, Math.random PRNG, and disabled TLS verification.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:crypto-key-management:SEC-CRY-HASH-001",
+          "security-governance:crypto-key-management:SEC-CRY-PRNG-001",
+          "security-governance:crypto-key-management:SEC-CRY-TLS-001"
+        ],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 2,
+          "major": 1,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "cry_tp_02",
+      "case_type": "true_positive",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/semantic/sem_03_crypto_doom_decrypt_first.py",
+      "layer": "semantic",
+      "prompt": "Clean-room audit AES-CBC session decoder for decrypt-before-MAC order.",
+      "expected_output": {
+        "verdict": "REJECT",
+        "expected_canonical_ids": [
+          "security-governance:crypto-key-management:SEM-DOOM-001"
+        ],
+        "expected_evidence_tier": "STATIC_LLM_INFERRED",
+        "expected_counts": {
+          "blocker": 1,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "cry_tp_03",
+      "case_type": "fail_closed_tooling",
+      "should_trigger": true,
+      "fixture_path": "tests/fixtures/cpu/tp_04_weak_crypto_and_tls.js",
+      "layer": "cpu",
+      "prompt": "Run crypto gate when semgrep is unavailable.",
+      "expected_output": {
+        "verdict": "ITERATE",
+        "expected_canonical_ids": [
+          "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+        ],
+        "expected_evidence_tier": "UNVERIFIED_MISSING_TOOL",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 1,
+          "minor": 0
+        }
+      },
+      "simulate_missing_tools": [
+        "semgrep"
+      ]
+    },
+    {
+      "id": "cry_hn_01",
+      "case_type": "hard_negative",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_01_parameterized_and_escaped.js",
+      "layer": "cpu",
+      "prompt": "Verify CSPRNG randomBytes and OWASP-baseline scryptSync password hashing.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    },
+    {
+      "id": "cry_oou_01",
+      "case_type": "out_of_universe",
+      "should_trigger": false,
+      "fixture_path": "tests/fixtures/cpu/tn_02_sanitized_diagnostic_export.js",
+      "layer": "cpu",
+      "prompt": "Evaluate crypto-key-management on diagnostic log redactor.",
+      "expected_output": {
+        "verdict": "SHIP",
+        "expected_canonical_ids": [],
+        "expected_evidence_tier": "TOOL_VERIFIED",
+        "expected_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0
+        }
+      }
+    }
+  ]
+}

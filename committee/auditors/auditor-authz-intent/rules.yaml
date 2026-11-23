@@ -1,0 +1,142 @@
+schema_version: "1.2.0"
+suite_id: "security-governance"
+module_id: "auditor-authz-intent"
+clean_room_required: true
+synthesis_mode: "conjunctive_gate"
+cpu_precondition:
+  required_scanners: ["semgrep", "gitleaks", "osv-scanner", "trivy"]
+  fail_closed_blocking_id: "security-governance:tooling:MISSING_REQUIRED_TOOL_EVIDENCE"
+  non_sast_filter: "Exclude defects already emitted in SARIF; audit semantic authorization, cross-file RBAC, business-state, crypto-order, and parser-boundary invariants."
+rules:
+  - id: "authz-01"
+    canonical_id: "security-governance:auditor-authz-intent:authz-01"
+    name: "Missing Object Ownership or Tenant Mediation (IDOR/BOLA)"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "saltzer-schroeder"
+    invariant_id: "saltzer-schroeder-inv-01"
+    source_id: "SRC-SALTZER-1975"
+    cwe_owasp: ["CWE-639", "CWE-285", "OWASP-API1:2023"]
+    applies_to: ["**/routes/**", "**/controllers/**", "**/api/**", "**/resolvers/**", "**/handlers/**"]
+    non_sast_rationale: "Absent ownership predicates have no syntactic sink; custom ORM scopes and no-op authz stubs evade intraprocedural SAST."
+    diff_inspection_protocol: "Trace every handler extracting a caller-supplied object ID to its datastore query or mutation; verify an active non-stub ownership or tenant_id predicate binds the authenticated principal prior to data access."
+    false_positive_exemption: "Suppress if enforced middleware, PostgreSQL FORCE ROW LEVEL SECURITY, or repository query binds principal/tenant ID into the WHERE clause or policy gate (confirming non-stub execution)."
+    negative_control: "Suppress if enforced middleware, ORM row-level security scope, or repository query binds principal/tenant ID into the WHERE clause or policy gate (confirm dependency is not a no-op stub)."
+    required_evidence: "Exact file:line of handler entry, user-controlled ID extraction, and unguarded datastore access or no-op authz dependency."
+    mandatory_remediation: "Enforce server-side subject-to-object authorization or tenant-scoped query predicates before reading or mutating any record."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:bola-missing-mediation"
+
+  - id: "authz-02"
+    canonical_id: "security-governance:auditor-authz-intent:authz-02"
+    name: "Missing or Fail-Open Function-Level Privilege Mediation (BFLA)"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "saltzer-schroeder"
+    invariant_id: "saltzer-schroeder-inv-03"
+    source_id: "SRC-SCHROEDER-1972"
+    cwe_owasp: ["CWE-285", "CWE-862", "OWASP-API5:2023"]
+    applies_to: ["**/admin/**", "**/routes/**", "**/controllers/**", "**/middleware/**", "**/rbac/**"]
+    non_sast_rationale: "Framework controller inheritance, implicit router groups, and custom role-check fallthrough cannot be classified as privileged vs. public by syntax-only AST scanners."
+    diff_inspection_protocol: "Inspect every administrative, billing, moderation, or internal route registration and middleware chain; verify default-deny role/capability assertions reject absent or unrecognized roles with 403."
+    false_positive_exemption: "Suppress if an explicit default-deny role guard wraps the route or parent router group and rejects unknown/absent roles with 403."
+    negative_control: "Suppress if an explicit default-deny role guard wraps the route or parent router group and rejects unknown/absent roles with 403."
+    required_evidence: "Exact file:line of privileged route registration, middleware stack, and missing or fail-open role assertion."
+    mandatory_remediation: "Isolate administrative handlers under a default-deny privileged controller or explicit per-function role/ring allowlist."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:bfla-privilege-ring"
+
+  - id: "authz-03"
+    canonical_id: "security-governance:auditor-authz-intent:authz-03"
+    name: "Unprojected Boundary Binding or Raw Entity Exposure (BOPLA)"
+    severity: "MAJOR"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "shostack"
+    invariant_id: "shostack-inv-01"
+    source_id: "SRC-SHOSTACK-2014"
+    cwe_owasp: ["CWE-915", "CWE-213", "OWASP-API3:2023", "OWASP-API10:2023"]
+    applies_to: ["**/api/**", "**/dto/**", "**/serializers/**", "**/models/**", "**/webhooks/**"]
+    non_sast_rationale: "Object spread and ORM update calls are syntactically idiomatic; distinguishing privileged fields (role, is_admin, passwordHash) requires domain schema semantics."
+    diff_inspection_protocol: "Inspect inbound request/webhook bindings and outbound response serializers; verify explicit writable-field allowlists and response DTO projections strip privileged/sensitive properties."
+    false_positive_exemption: "Suppress if strict DTO schemas/serializers (pydantic response_model, zod .pick()) explicitly enumerate permitted input and output fields and strip unknown keys."
+    negative_control: "Suppress if strict DTO schemas/serializers explicitly enumerate permitted input and output fields and strip unknown keys."
+    required_evidence: "Exact file:line of unchecked model binding or raw entity serialization plus privileged/sensitive field name in target schema."
+    mandatory_remediation: "Enforce explicit input allowlist DTOs and output projection schemas at every trust-boundary crossing."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:bopla-boundary-projection"
+
+  - id: "authz-04"
+    canonical_id: "security-governance:auditor-authz-intent:authz-04"
+    name: "Multi-Tenant Isolation or Authoritative Ledger Integrity Violation"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "anderson"
+    invariant_id: "anderson-inv-01"
+    source_id: "SRC-ANDERSON-2020"
+    cwe_owasp: ["CWE-284", "CWE-840", "CWE-602"]
+    applies_to: ["**/billing/**", "**/payments/**", "**/ledger/**", "**/cache/**", "**/tenants/**"]
+    non_sast_rationale: "Cache key strings and billing arithmetic are syntactically valid; missing tenant partitioning and client-trusted totals exist strictly in business-logic semantics."
+    diff_inspection_protocol: "Check shared cache keys, vector/RAG filters, and billing/quota mutations; verify canonical tenant_id scoping and server-authoritative computation of prices, discounts, and balances."
+    false_positive_exemption: "Suppress if cache keys include canonical tenant prefixes and server recomputes authoritative pricing/ledger state inside an atomic transaction."
+    negative_control: "Suppress if cache keys include canonical tenant prefixes and server recomputes authoritative pricing/ledger state inside an atomic transaction."
+    required_evidence: "Exact file:line of unpartitioned cache/query key or client-trusted financial parameter reaching persistence."
+    mandatory_remediation: "Bind tenant isolation into every query and cache key; recompute all monetary and quota invariants server-side with immutable audit entries."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:tenant-ledger-integrity"
+
+  - id: "authz-05"
+    canonical_id: "security-governance:auditor-authz-intent:authz-05"
+    name: "Cryptographic Doom Order, Non-Constant-Time MAC, or Nonce Reuse"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "bernstein-sec"
+    invariant_id: "bernstein-sec-inv-01"
+    source_id: "SRC-BERNSTEIN-2012"
+    cwe_owasp: ["CWE-347", "CWE-208", "CWE-323", "RFC-8725", "RFC-8439"]
+    applies_to: ["**/crypto/**", "**/auth/**", "**/jwt/**", "**/tokens/**", "**/session/**"]
+    non_sast_rationale: "SAST flags banned primitives (MD5) but misses decrypt-before-MAC verification ordering, custom equality checks, and stateful nonce reuse across wrappers."
+    diff_inspection_protocol: "Inspect custom crypto and token verification wrappers for decryption/unpadding prior to MAC check, non-constant-time comparisons, unpinned JWT algorithm acceptance, or colliding AEAD nonces."
+    false_positive_exemption: "Suppress if delegating directly to vetted AEAD/NaCl/libsodium APIs with pinned algorithm allowlists, unique nonces, and constant-time comparison."
+    negative_control: "Suppress if delegating directly to vetted AEAD/NaCl/libsodium APIs with pinned algorithm allowlists, unique nonces, and constant-time comparison."
+    required_evidence: "Exact file:line of decrypt-before-MAC, naive secret equality, unpinned JWT alg acceptance, or colliding nonce derivation."
+    mandatory_remediation: "Use misuse-resistant AEAD (Encrypt-then-MAC), constant-time tag checks, pinned verification algorithms, and unique nonces."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:crypto-composition-order"
+
+  - id: "authz-06"
+    canonical_id: "security-governance:auditor-authz-intent:authz-06"
+    name: "Origin/IPC Confused Deputy or Cross-Layer Parser Differential"
+    severity: "BLOCKER"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "zalewski-sec"
+    invariant_id: "zalewski-sec-inv-01"
+    source_id: "SRC-ZALEWSKI-2011"
+    cwe_owasp: ["CWE-346", "CWE-436", "CWE-444"]
+    applies_to: ["**/electron/**", "**/preload*", "**/ipc/**", "**/proxy/**", "**/parsers/**", "**/gateway/**"]
+    non_sast_rationale: "IPC channel indirection, origin inheritance edge cases, and URL/JSON/HTTP parser differentials across two components cannot be inferred from single-file AST patterns."
+    diff_inspection_protocol: "Inspect Electron/webview preloads and ipcMain handlers for event.senderFrame.origin allowlists and realpath confinement; inspect URL/JSON/HTTP validators for parser mismatches with downstream HTTP clients or backends."
+    false_positive_exemption: "Suppress if preload exposes single-purpose narrow methods with strict senderFrame.origin allowlist, and URL/JSON/HTTP layers normalize via a single canonical parser rejecting ambiguity."
+    negative_control: "Suppress if preload exposes single-purpose narrow methods with strict senderFrame.origin allowlist, and JSON/HTTP layers reject duplicate keys and ambiguous framing (RFC 8259/I-JSON)."
+    required_evidence: "Exact file:line of generic IPC bridge, missing senderFrame check, or divergent parser configuration across boundary components."
+    mandatory_remediation: "Enforce narrow per-feature IPC bridges with strict senderFrame.origin checks and single-grammar strict parsing rejecting duplicate keys/ambiguous framing."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:origin-parser-differential"
+
+  - id: "authz-07"
+    canonical_id: "security-governance:auditor-authz-intent:authz-07"
+    name: "Stateful Workflow Sequence Bypass or Concurrent TOCTOU Abuse"
+    severity: "MAJOR"
+    evidence_tier: "STATIC_LLM_INFERRED"
+    engineer_slug: "anderson"
+    invariant_id: "anderson-inv-02"
+    source_id: "SRC-BOND-ANDERSON-2001"
+    cwe_owasp: ["CWE-841", "CWE-362", "OWASP-API6:2023"]
+    applies_to: ["**/workflows/**", "**/checkout/**", "**/orders/**", "**/auth/**", "**/state/**"]
+    non_sast_rationale: "SAST evaluates single-call shapes; multi-step API sequence abuse, replay, and concurrent check-then-act TOCTOU races require state-machine reasoning."
+    diff_inspection_protocol: "Trace multi-step security/business state transitions (checkout, approval, credential reset) for missing prior-state preconditions or non-atomic check-then-act database updates."
+    false_positive_exemption: "Suppress if state transitions enforce explicit server-side finite-state preconditions with atomic database locking or optimistic concurrency versioning."
+    negative_control: "Suppress if state transitions enforce explicit server-side finite-state preconditions with atomic database locking or optimistic concurrency versioning."
+    required_evidence: "Exact file:line of state-mutating endpoints showing absent prior-state precondition or non-atomic check-then-act sequence."
+    mandatory_remediation: "Enforce atomic server-side state-machine preconditions and idempotency locks across every workflow transition."
+    cross_model_recommended: true
+    deduplication_key: "{file}:{line}:workflow-api-composition"

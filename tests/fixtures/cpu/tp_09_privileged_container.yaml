@@ -1,0 +1,30 @@
+# Synthetic fixture: systemic-governance-audit + secrets-supply-chain.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-worker-canary
+  namespace: acme-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-worker-canary
+  template:
+    metadata:
+      labels:
+        app: billing-worker-canary
+    spec:
+      containers:
+        - name: worker
+          # Defect 1 (MAJOR, secrets-supply-chain): mutable :latest tag without @sha256 pin.
+          image: registry.acme.test/billing-worker:latest
+          imagePullPolicy: Always
+          securityContext:
+            # Defect 2 (BLOCKER, systemic-governance-audit): violates Baseline PSS.
+            privileged: true
+            # Defect 3 (MAJOR, systemic-governance-audit): violates Restricted PSS (UID 0).
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+          env:
+            - name: SERVICE_ENV
+              value: "staging-canary"

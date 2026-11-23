@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/best-security-governance-architects/validators/schema_sec.json",
+  "title": "SEC.md Frontmatter Schema (security-governance v1.2.0)",
+  "description": "Strict Draft 2020-12 JSON Schema validating YAML frontmatter of modules/<module_slug>/SEC.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "module_identity",
+    "cpu_rules",
+    "semantic_invariants",
+    "evidence_contribution_mappings",
+    "primary_sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.1.0", "1.2.0"]
+    },
+    "module_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "domain", "stride_categories", "standard_anchors"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "domain": { "type": "string", "minLength": 3, "maxLength": 140 },
+        "stride_categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "Spoofing",
+              "Tampering",
+              "Repudiation",
+              "Information Disclosure",
+              "Denial of Service",
+              "Elevation of Privilege"
+            ]
+          }
+        },
+        "standard_anchors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 3, "maxLength": 120 }
+        }
+      }
+    },
+    "cpu_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "canonical_id", "engine", "engine_rule_ref", "severity", "cwe_ids", "source_id"],
+        "properties": {
+          "rule_id": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$" },
+          "canonical_id": { "type": "string", "pattern": "^security-governance:[a-z0-9-]+:[A-Za-z0-9_.-]+$" },
+          "engine": {
+            "type": "string",
+            "enum": ["sec_cpu_scanner", "semgrep", "gitleaks", "osv-scanner", "trivy", "conftest", "zizmor", "mcp-scan"]
+          },
+          "engine_rule_ref": { "type": "string", "minLength": 2, "maxLength": 160 },
+          "severity": { "type": "string", "enum": ["BLOCKER", "MAJOR", "MINOR"] },
+          "cwe_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^CWE-[1-9][0-9]*$" }
+          },
+          "sarif_security_severity_min": { "type": ["number", "null"], "minimum": 0.0, "maximum": 10.0 },
+          "source_id": { "type": "string", "pattern": "^SRC-[A-Z0-9-]+$" }
+        }
+      }
+    },
+    "semantic_invariants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["invariant_id", "canonical_id", "severity", "cwe_ids", "diff_check", "false_positive_exemption", "source_id"],
+        "properties": {
+          "invariant_id": { "type": "string", "pattern": "^SEM-[A-Z0-9-]+$" },
+          "canonical_id": { "type": "string", "pattern": "^security-governance:[a-z0-9-]+:SEM-[A-Z0-9-]+$" },
+          "severity": { "type": "string", "enum": ["BLOCKER", "MAJOR", "MINOR"] },
+          "cwe_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^CWE-[1-9][0-9]*$" }
+          },
+          "diff_check": { "type": "string", "minLength": 20, "maxLength": 600 },
+          "false_positive_exemption": { "type": "string", "minLength": 15, "maxLength": 400 },
+          "requires_cross_model_auditor": { "type": "boolean", "default": true },
+          "source_id": { "type": "string", "pattern": "^SRC-[A-Z0-9-]+$" }
+        }
+      }
+    },
+    "evidence_contribution_mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["framework", "control_ref", "contribution_scope", "evidence_artifact", "source_id"],
+        "properties": {
+          "framework": {
+            "type": "string",
+            "enum": ["eu_dora_art9", "eu_ai_act", "iso_42001", "nist_ai_rmf", "nist_ssdf", "slsa", "oss_license_provenance"]
+          },
+          "control_ref": { "type": "string", "minLength": 3, "maxLength": 120 },
+          "contribution_scope": { "type": "string", "pattern": "^contributes pre-merge evidence toward .+", "maxLength": 320 },
+          "evidence_artifact": { "type": "string", "minLength": 5, "maxLength": 200 },
+          "source_id": { "type": "string", "pattern": "^SRC-[A-Z0-9-]+$" }
+        }
+      }
+    },
+    "primary_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "title", "publisher", "version_or_date", "identifier_type", "url_or_doi"],
+        "properties": {
+          "source_id": { "type": "string", "pattern": "^SRC-[A-Z0-9-]+$" },
+          "title": { "type": "string", "minLength": 4, "maxLength": 240 },
+          "publisher": { "type": "string", "minLength": 2, "maxLength": 120 },
+          "version_or_date": { "type": "string", "minLength": 4, "maxLength": 64 },
+          "identifier_type": { "type": "string", "enum": ["doi", "isbn", "official_url", "eur_lex_celex", "standard_id"] },
+          "url_or_doi": { "type": "string", "pattern": "^(https://|doi:10\\.|ISBN )" }
+        }
+      }
+    }
+  }
+}
