@@ -17,7 +17,7 @@ rules:
     invariant_id: "greshake-inv-01"
     source_id: "SRC-GRESHAKE-2023"
     cwe_owasp: ["CWE-74", "CWE-1427", "OWASP-LLM01:2025"]
-    applies_to: ["**/agents/**", "**/prompts/**", "**/rag/**", "**/llm/**", "**/tools/**"]
+    applies_to: ["**/agents/**", "**/prompts/**", "**/rag/**", "**/llm/**", "**/tools/**", "**/*.sh"]
     non_sast_rationale: "Prompt string interpolation and LLM message arrays look syntactically identical for trusted vs. untrusted sources; SAST lacks data-provenance trust tiers."
     diff_inspection_protocol: "Trace external untrusted content (RAG chunks, web pages, emails, public issues, third-party tool outputs) into prompt buffers of LLMs holding tool-calling or write capabilities; verify structural trust-tier isolation."
     false_positive_exemption: "Suppress if untrusted content is processed exclusively by a tool-less Quarantined LLM or reference-tokenized memory inaccessible to the Privileged LLM control plane."
@@ -36,7 +36,7 @@ rules:
     invariant_id: "saltzer-schroeder-inv-05"
     source_id: "SRC-SALTZER-1975"
     cwe_owasp: ["CWE-269", "CWE-441", "OWASP-LLM06:2025"]
-    applies_to: ["**/agents/**", "**/mcp/**", "**/tools/**", "**/connectors/**", "**/oauth/**"]
+    applies_to: ["**/agents/**", "**/mcp/**", "**/tools/**", "**/connectors/**", "**/oauth/**", "**/*.sh"]
     non_sast_rationale: "Credential calls look syntactically valid to gitleaks and semgrep; detecting confused-deputy delegation requires comparing caller authority to injected tool token scope."
     diff_inspection_protocol: "Inspect agent tool connectors for static/broad service-account tokens, wildcard OAuth/DB roles, or ambient operator credentials used on behalf of untrusted or lower-privilege callers."
     false_positive_exemption: "Suppress if tool invocation exchanges or attenuates credentials per task to minimal read/write scope and enforces caller authorization outside the LLM."
@@ -86,20 +86,20 @@ rules:
 
   - id: "agentic-05"
     canonical_id: "security-governance:auditor-agentic-abuse:agentic-05"
-    name: "Unconstrained Actuation Gate & Anti-Self-Auditing Separation Violation"
+    name: "Unconstrained Actuation Gate, Browser/CDP Eval & Anti-Self-Auditing Violation"
     severity: "BLOCKER"
     evidence_tier: "STATIC_LLM_INFERRED"
     engineer_slug: "leveson-sec"
     invariant_id: "leveson-sec-inv-01"
     source_id: "SRC-LEVESON-2011"
     cwe_owasp: ["CWE-285", "CWE-778", "OWASP-LLM06:2025"]
-    applies_to: ["**/agents/**", "**/actions/**", "**/executors/**", "**/workflows/**", "**/mcp/**", "**/.github/workflows/**", "**/.security*"]
-    non_sast_rationale: "Static tools see standard CLI/SDK calls; verifying an independent non-LLM control gate, parameter-visible human approval, and Separation of Powers preventing a builder agent from tampering with its own tests, evals, rules, or audit logs requires control-loop reasoning."
-    diff_inspection_protocol: "Verify (1) high-impact actuations (deletions, transfers, external writes/PRs, credential reads) pass through a deterministic non-LLM policy gate and full-parameter human approval, AND (2) no autonomous builder agent has write permissions over its own tests/, evals/, rules.yaml, policy files, validators/, or audit/verdict logs, nor self-attests SHIP in the same session."
-    false_positive_exemption: "Suppress if an out-of-band deterministic policy controller gates tool calls with full-parameter human confirmation AND builder write scopes strictly exclude tests/, evals/, rules.yaml, policy files, and append-only audit sinks evaluated by an isolated Clean-Room auditor."
+    applies_to: ["**/agents/**", "**/actions/**", "**/executors/**", "**/workflows/**", "**/mcp/**", "**/.github/workflows/**", "**/.security*", "**/electron/**"]
+    non_sast_rationale: "Static tools see standard CLI/SDK/CDP calls; verifying an independent non-LLM control gate, parameter-visible human approval (vs. self-attested {confirm: true} booleans), CDP debug-port auth/origin pinning, and Separation of Powers preventing a builder agent from tampering with its own tests, evals, rules, or audit logs requires control-loop reasoning."
+    diff_inspection_protocol: "Verify (1) high-impact actuations (deletions, transfers, external writes/PRs, credential reads, webContents.executeJavaScript, CDP Runtime.evaluate over --remote-debugging-port) pass through an authenticated deterministic non-LLM policy gate and full-parameter human approval (not a client-supplied {confirm: true} boolean), AND (2) no autonomous builder agent has write permissions over its own tests/, evals/, rules.yaml, policy files, validators/, or audit/verdict logs, nor self-attests SHIP in the same session."
+    false_positive_exemption: "Suppress if an out-of-band deterministic policy controller gates tool/CDP calls with full-parameter human confirmation (downgrade feature-flagged experimental CDP endpoints disabled by default to MAJOR) AND builder write scopes strictly exclude tests/, evals/, rules.yaml, policy files, and append-only audit sinks."
     negative_control: "Suppress if an out-of-band deterministic policy controller gates the tool call, requires full-parameter human confirmation, and enforces read-only isolation over tests, evals, policy rules, and audit logs."
-    required_evidence: "Exact file:line of unguarded destructive/external actuation, obfuscated approval parameters, or builder write/self-attestation scope spanning tests, evals, rules.yaml, policy files, or audit logs."
-    mandatory_remediation: "Interpose a deterministic control-loop policy gate with full-parameter human confirmation, revoke builder write access to tests/evals/rules.yaml/policy/audit logs, and require isolated Clean-Room verification."
+    required_evidence: "Exact file:line of unguarded destructive/external/CDP actuation, self-attested boolean confirm, obfuscated approval parameters, or builder write/self-attestation scope spanning tests, evals, rules.yaml, policy files, or audit logs."
+    mandatory_remediation: "Interpose an authenticated deterministic control-loop policy gate with full-parameter human confirmation, pin/authenticate CDP debug ports, revoke builder write access to tests/evals/rules.yaml/policy/audit logs, and require isolated Clean-Room verification."
     cross_model_recommended: true
     deduplication_key: "{file}:{line}:missing-actuation-or-self-audit-gate"
 

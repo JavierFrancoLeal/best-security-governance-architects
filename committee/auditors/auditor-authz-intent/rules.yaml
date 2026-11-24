@@ -86,7 +86,7 @@ rules:
 
   - id: "authz-05"
     canonical_id: "security-governance:auditor-authz-intent:authz-05"
-    name: "Cryptographic Doom Order, Non-Constant-Time MAC, or Nonce Reuse"
+    name: "Cryptographic Doom Order, Non-Constant-Time Secret/MAC Compare, or Nonce Reuse"
     severity: "BLOCKER"
     evidence_tier: "STATIC_LLM_INFERRED"
     engineer_slug: "bernstein-sec"
@@ -94,18 +94,18 @@ rules:
     source_id: "SRC-BERNSTEIN-2012"
     cwe_owasp: ["CWE-347", "CWE-208", "CWE-323", "RFC-8725", "RFC-8439"]
     applies_to: ["**/crypto/**", "**/auth/**", "**/jwt/**", "**/tokens/**", "**/session/**"]
-    non_sast_rationale: "SAST flags banned primitives (MD5) but misses decrypt-before-MAC verification ordering, custom equality checks, and stateful nonce reuse across wrappers."
-    diff_inspection_protocol: "Inspect custom crypto and token verification wrappers for decryption/unpadding prior to MAC check, non-constant-time comparisons, unpinned JWT algorithm acceptance, or colliding AEAD nonces."
+    non_sast_rationale: "SAST flags banned primitives (MD5) but misses decrypt-before-MAC verification ordering, non-constant-time password-hash/token equality checks outside dedicated crypto directories, and stateful nonce reuse across wrappers."
+    diff_inspection_protocol: "Inspect crypto, token, and login verification code across application code for decryption/unpadding prior to MAC check, non-constant-time secret/hash comparisons (!== instead of timingSafeEqual/hmac.compare_digest — downgrade strictly loopback-only hash timing leaks to MINOR), unpinned JWT algorithm acceptance, or colliding AEAD nonces."
     false_positive_exemption: "Suppress if delegating directly to vetted AEAD/NaCl/libsodium APIs with pinned algorithm allowlists, unique nonces, and constant-time comparison."
     negative_control: "Suppress if delegating directly to vetted AEAD/NaCl/libsodium APIs with pinned algorithm allowlists, unique nonces, and constant-time comparison."
-    required_evidence: "Exact file:line of decrypt-before-MAC, naive secret equality, unpinned JWT alg acceptance, or colliding nonce derivation."
-    mandatory_remediation: "Use misuse-resistant AEAD (Encrypt-then-MAC), constant-time tag checks, pinned verification algorithms, and unique nonces."
+    required_evidence: "Exact file:line of decrypt-before-MAC, naive secret/hash equality, unpinned JWT alg acceptance, or colliding nonce derivation."
+    mandatory_remediation: "Use misuse-resistant AEAD (Encrypt-then-MAC), constant-time tag/hash checks (timingSafeEqual / hmac.compare_digest), pinned verification algorithms, and unique nonces."
     cross_model_recommended: true
     deduplication_key: "{file}:{line}:crypto-composition-order"
 
   - id: "authz-06"
     canonical_id: "security-governance:auditor-authz-intent:authz-06"
-    name: "Origin/IPC Confused Deputy or Cross-Layer Parser Differential"
+    name: "Origin/IPC Confused Deputy, Electron Partition Sharing, or Parser Differential"
     severity: "BLOCKER"
     evidence_tier: "STATIC_LLM_INFERRED"
     engineer_slug: "zalewski-sec"
@@ -113,12 +113,12 @@ rules:
     source_id: "SRC-ZALEWSKI-2011"
     cwe_owasp: ["CWE-346", "CWE-436", "CWE-444"]
     applies_to: ["**/electron/**", "**/preload*", "**/ipc/**", "**/proxy/**", "**/parsers/**", "**/gateway/**"]
-    non_sast_rationale: "IPC channel indirection, origin inheritance edge cases, and URL/JSON/HTTP parser differentials across two components cannot be inferred from single-file AST patterns."
-    diff_inspection_protocol: "Inspect Electron/webview preloads and ipcMain handlers for event.senderFrame.origin allowlists and realpath confinement; inspect URL/JSON/HTTP validators for parser mismatches with downstream HTTP clients or backends."
-    false_positive_exemption: "Suppress if preload exposes single-purpose narrow methods with strict senderFrame.origin allowlist, and URL/JSON/HTTP layers normalize via a single canonical parser rejecting ambiguity."
-    negative_control: "Suppress if preload exposes single-purpose narrow methods with strict senderFrame.origin allowlist, and JSON/HTTP layers reject duplicate keys and ambiguous framing (RFC 8259/I-JSON)."
-    required_evidence: "Exact file:line of generic IPC bridge, missing senderFrame check, or divergent parser configuration across boundary components."
-    mandatory_remediation: "Enforce narrow per-feature IPC bridges with strict senderFrame.origin checks and single-grammar strict parsing rejecting duplicate keys/ambiguous framing."
+    non_sast_rationale: "IPC channel indirection, WebContentsView session partition sharing between trusted application views and arbitrary web navigation, shell.openExternal origin bypasses, and URL/JSON/HTTP parser differentials cannot be inferred from single-file AST patterns."
+    diff_inspection_protocol: "Inspect Electron/webview preloads and ipcMain handlers for event.senderFrame.origin allowlists and realpath confinement; verify secondary WebContentsView/webview instances browsing external http(s) sites use isolated in-memory partitions rather than sharing the authenticated session cookie jar; verify shell.openExternal enforces an origin allowlist; inspect URL/JSON/HTTP validators for parser mismatches."
+    false_positive_exemption: "Suppress if preload exposes narrow methods with strict senderFrame.origin allowlists, external browsing views use isolated in-memory partitions (downgrade shared partition to MAJOR when cookies enforce HttpOnly + SameSite=Strict), and parsers reject duplicate keys/ambiguous framing."
+    negative_control: "Suppress if preload exposes single-purpose narrow methods with strict senderFrame.origin allowlist, external views use isolated partitions, and JSON/HTTP layers reject duplicate keys and ambiguous framing (RFC 8259/I-JSON)."
+    required_evidence: "Exact file:line of generic IPC bridge, missing senderFrame check, shared persistent partition across trusted/external views, unvalidated shell.openExternal, or divergent parser configuration."
+    mandatory_remediation: "Enforce narrow IPC bridges with senderFrame.origin checks, isolate external-browsing WebContentsViews into in-memory partitions, allowlist shell.openExternal origins, and enforce single-grammar strict parsing."
     cross_model_recommended: true
     deduplication_key: "{file}:{line}:origin-parser-differential"
 

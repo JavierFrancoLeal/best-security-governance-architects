@@ -43,6 +43,17 @@ cpu_rules:
   - CWE-1275
   sarif_security_severity_min: 6.1
   source_id: SRC-RFC6265
+- rule_id: SEC-ELC-CDP-001
+  canonical_id: security-governance:authn-authz-boundaries:SEC-ELC-CDP-001
+  engine: sec_cpu_scanner
+  engine_rule_ref: SEC-ELC-CDP-001
+  severity: MAJOR
+  cwe_ids:
+  - CWE-306
+  - CWE-346
+  - CWE-94
+  sarif_security_severity_min: 6.8
+  source_id: SRC-OWASP-ASVS-5
 semantic_invariants:
 - invariant_id: SEM-IDOR-001
   canonical_id: security-governance:authn-authz-boundaries:SEM-IDOR-001
@@ -117,7 +128,7 @@ primary_sources:
 - Standard anchors: OWASP Top 10:2025 (A01, A07), OWASP API Security Top 10:2023 (API1, API2, API5), OWASP ASVS 5.0.0 (V3, V6, V7, V8, V9), IETF RFC 8725 (JWT BCP) & RFC 6265 (Cookies).
 
 ## Deterministic CPU vs. Clean-Room Semantic Split
-- Deterministic CPU rules (`TOOL_VERIFIED`): security-governance:authn-authz-boundaries:SEC-AUTH-JWT-001, security-governance:authn-authz-boundaries:SEC-AUTH-CORS-001, security-governance:authn-authz-boundaries:SEC-AUTH-COOKIE-001.
+- Deterministic CPU rules (`TOOL_VERIFIED`): security-governance:authn-authz-boundaries:SEC-AUTH-JWT-001, security-governance:authn-authz-boundaries:SEC-AUTH-CORS-001, security-governance:authn-authz-boundaries:SEC-AUTH-COOKIE-001, security-governance:authn-authz-boundaries:SEC-ELC-CDP-001.
 - Clean-Room semantic invariants (`STATIC_LLM_INFERRED`): security-governance:authn-authz-boundaries:SEM-IDOR-001, security-governance:authn-authz-boundaries:SEM-IPC-001.
 
 ## Scope & Governance Boundary

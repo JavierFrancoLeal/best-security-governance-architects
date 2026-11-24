@@ -193,6 +193,13 @@ RULE_META: dict[str, dict[str, Any]] = {
         "security_severity": "9.0",
         "short": "Governance tampering or anti-self-auditing violation (continue-on-error on security gate or write-enabled auditor)",
     },
+    "SEC-ELC-CDP-001": {
+        "module": "authn-authz-boundaries",
+        "severity": "MAJOR",
+        "cwe_ids": ["CWE-306", "CWE-346", "CWE-94"],
+        "security_severity": "6.8",
+        "short": "Unauthenticated Chrome DevTools port (--remote-debugging-port), Runtime.evaluate concatenation, or unvalidated shell.openExternal",
+    },
 }
 
 SECRET_PATTERNS = [
@@ -211,6 +218,17 @@ SQL_INTERP_RE = re.compile(
     re.IGNORECASE,
 )
 INNER_HTML_RE = re.compile(r"\.(?:innerHTML|outerHTML)\s*=\s*(?!.*(?:DOMPurify\.sanitize|sanitizeHtml))")
+NODE_SHELL_EXEC_RE = re.compile(
+    r"""(?:(?<!\.)\b|child_process\.|cp\.)exec(?:Sync)?\s*\(\s*(?:`[^`]*\$\{|[^"'`\s)]|["'][^"']*["']\s*\+)"""
+)
+NODE_SPAWN_SHELL_TRUE_RE = re.compile(r"""\bspawn(?:Sync)?\s*\([^)]*shell\s*:\s*true\b""")
+CDP_DEBUG_PORT_RE = re.compile(r"""--remote-debugging-port\b""")
+CDP_RUNTIME_EVAL_CONCAT_RE = re.compile(r"""Runtime\.evaluate.*(?:\+\s*[a-zA-Z_]|\$\{)""")
+SHELL_OPEN_EXTERNAL_RE = re.compile(r"""\bshell\.openExternal\s*\(""")
+OPEN_EXTERNAL_GUARD_RE = re.compile(
+    r"""\b(?:isAllowedExternal\w*|ALLOWED_EXTERNAL_\w+|allowedOrigins?|isSafeUrl|isValidUrl|new\s+URL\s*\(|startsWith\s*\(\s*["']https://["'])""",
+    re.IGNORECASE,
+)
 DANGEROUS_HTML_RE = re.compile(r"dangerouslySetInnerHTML\s*=\s*\{\{\s*__html\s*:(?!.*(?:DOMPurify\.sanitize|sanitizeHtml))")
 MD5_CRYPTO_RE = re.compile(r"""createHash\s*\(\s*["'](?:md5|sha1)["']\s*\)""", re.IGNORECASE)
 MATH_RANDOM_RE = re.compile(r"\bMath\.random\s*\(")
@@ -468,6 +486,7 @@ def _scan_text_file(path: Path, rel_path: str, text: str) -> tuple[list[dict[str
     has_cors_creds = False
     cookie_flag_reported = False
     has_jwt_verify = bool(JWT_VERIFY_RE.search(text))
+    has_child_process = bool(re.search(r"\bchild_process\b", text))
     has_prompt_only_guard = False
     prompt_guard_line = 1
     has_code_allowlist = bool(re.search(r"\b(?:ALLOWED_TOOLS|verifyApprovalToken|verifyHumanApproval|quarantinedReader)\b", text))
@@ -517,6 +536,18 @@ def _scan_text_file(path: Path, rel_path: str, text: str) -> tuple[list[dict[str
                 findings.append(_make_finding("SEC-INJ-SQLI-001", rel_path, idx, 1, "Raw SQL template interpolation detected"))
             if INNER_HTML_RE.search(line) or DANGEROUS_HTML_RE.search(line):
                 findings.append(_make_finding("SEC-INJ-XSS-001", rel_path, idx, 1, "Unsanitized HTML/DOM sink assignment detected"))
+            if has_child_process and (NODE_SHELL_EXEC_RE.search(line) or NODE_SPAWN_SHELL_TRUE_RE.search(line)):
+                findings.append(_make_finding("SEC-INJ-CMD-001", rel_path, idx, 1, "Dynamic Node.js shell execution (exec/execSync or spawn with shell: true) detected"))
+            if CDP_DEBUG_PORT_RE.search(line) and "--remote-allow-origins" not in text:
+                findings.append(_make_finding("SEC-ELC-CDP-001", rel_path, idx, 1, "Chrome --remote-debugging-port launched without explicit --remote-allow-origins pinning"))
+            if CDP_RUNTIME_EVAL_CONCAT_RE.search(line):
+                findings.append(_make_finding("SEC-ELC-CDP-001", rel_path, idx, 1, "CDP Runtime.evaluate expression built via string concatenation"))
+            if SHELL_OPEN_EXTERNAL_RE.search(line):
+                win_start = max(0, idx - 5)
+                win_end = min(len(lines), idx + 2)
+                guard_window = "\n".join(lines[win_start:win_end])
+                if not OPEN_EXTERNAL_GUARD_RE.search(guard_window):
+                    findings.append(_make_finding("SEC-ELC-CDP-001", rel_path, idx, 1, "shell.openExternal() called without local URL/origin allowlist guard"))
             if MD5_CRYPTO_RE.search(line) and "crypto-non-security" not in line:
                 findings.append(_make_finding("SEC-CRY-HASH-001", rel_path, idx, 1, "Weak cryptographic hash (MD5/SHA-1) detected"))
             if MATH_RANDOM_RE.search(line):

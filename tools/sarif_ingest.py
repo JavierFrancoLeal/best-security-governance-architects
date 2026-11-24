@@ -24,6 +24,17 @@ PENDING_SIGNOFF_ID = "security-governance:governance:PENDING_NAMED_HUMAN_SIGNOFF
 
 SEVERITY_RANK = {"BLOCKER": 3, "MAJOR": 2, "MINOR": 1}
 LEVEL_TO_SEV = {"error": "BLOCKER", "warning": "MAJOR", "note": "MINOR", "none": "MINOR"}
+SEMANTIC_SEV_ALIASES = {
+    "BLOCKER": "BLOCKER",
+    "CRITICAL": "BLOCKER",
+    "HIGH": "MAJOR",
+    "MAJOR": "MAJOR",
+    "MEDIUM": "MAJOR",
+    "MODERATE": "MAJOR",
+    "MINOR": "MINOR",
+    "LOW": "MINOR",
+    "INFO": "MINOR",
+}
 
 
 def normalize_sarif_file(path: Path, default_tool: str) -> list[dict[str, Any]]:
@@ -37,6 +48,10 @@ def normalize_sarif_file(path: Path, default_tool: str) -> list[dict[str, Any]]:
         if not driver.get("name"):
             raise ValueError(f"Invalid SARIF run in {path.name}: missing tool.driver.name")
         tool_name = str(driver.get("name", default_tool)).lower()
+        rule_tags: dict[str, list[str]] = {}
+        for r in driver.get("rules") or []:
+            if isinstance(r, dict) and r.get("id"):
+                rule_tags[str(r["id"])] = list((r.get("properties") or {}).get("tags") or [])
         for res in run.get("results", []):
             props = res.get("properties") or {}
             rule_id = str(res.get("ruleId", "UNKNOWN"))
@@ -47,7 +62,11 @@ def normalize_sarif_file(path: Path, default_tool: str) -> list[dict[str, Any]]:
             phys = locs[0].get("physicalLocation", {})
             uri = str(phys.get("artifactLocation", {}).get("uri", "unknown"))
             line = int(phys.get("region", {}).get("startLine", 1))
-            module_id = "secrets-supply-chain" if tool_name in {"gitleaks", "osv-scanner"} else "systemic-governance-audit" if tool_name == "trivy" else "injection-input-validation"
+            tagged_mod = next(
+                (t.split(":", 1)[1] for t in rule_tags.get(rule_id, []) if t.startswith("security-governance:")),
+                None,
+            )
+            module_id = tagged_mod or ("secrets-supply-chain" if tool_name in {"gitleaks", "osv-scanner"} else "systemic-governance-audit" if tool_name == "trivy" else "injection-input-validation")
             canonical_id = str(props.get("canonical_id") or f"security-governance:{module_id}:{rule_id}")
             fp = hashlib.sha256(f"{uri}:{line}:{canonical_id}".encode("utf-8")).hexdigest()[:32]
             findings.append(
@@ -71,12 +90,17 @@ def deduplicate(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     best: dict[tuple[str, int, str], dict[str, Any]] = {}
     for item in findings:
         key = (item["file"], int(item["line"]), item["module_id"])
-        if key not in best or SEVERITY_RANK[item["severity"]] > SEVERITY_RANK[best[key]["severity"]]:
+        item_sev = item.get("severity", "MAJOR")
+        if key not in best or SEVERITY_RANK.get(item_sev, 2) > SEVERITY_RANK.get(best[key].get("severity", "MAJOR"), 2):
             best[key] = item
     return sorted(best.values(), key=lambda f: (f["file"], f["line"], f["canonical_id"]))
 
 
-def ingest_reports(reports_dir: Path, required_tools: list[str]) -> tuple[int, dict[str, Any]]:
+def ingest_reports(
+    reports_dir: Path,
+    required_tools: list[str],
+    semantic_findings_path: Path | None = None,
+) -> tuple[int, dict[str, Any]]:
     missing: list[dict[str, Any]] = []
     raw_findings: list[dict[str, Any]] = []
     present_tools: list[str] = []
@@ -103,7 +127,41 @@ def ingest_reports(reports_dir: Path, required_tools: list[str]) -> tuple[int, d
         raw_findings.extend(normalize_sarif_file(tier_a, "sec_cpu_scanner"))
         present_tools.append("sec_cpu_scanner")
 
-    deduped = deduplicate(raw_findings)
+    # Optional Clean-Room STATIC_LLM_INFERRED findings (decoupled from Tier B presence)
+    semantic_findings: list[dict[str, Any]] = []
+    if semantic_findings_path is not None:
+        if not semantic_findings_path.is_file():
+            raise ValueError(f"Semantic findings file not found: {semantic_findings_path}")
+        loaded = json.loads(semantic_findings_path.read_text(encoding="utf-8"))
+        items = loaded if isinstance(loaded, list) else loaded.get("findings", [])
+        for sf in items:
+            if not isinstance(sf, dict) or not sf.get("canonical_id"):
+                raise ValueError("Invalid semantic finding entry: expected object with non-empty canonical_id")
+            cid = str(sf["canonical_id"]).strip()
+            parts = cid.split(":")
+            if len(parts) != 3 or not all(parts):
+                raise ValueError(f"Invalid semantic canonical_id '{cid}': expected '<suite_id>:<module_id>:<rule_id>'")
+            raw_sev = str(sf.get("severity", "")).strip().upper()
+            if raw_sev not in SEMANTIC_SEV_ALIASES:
+                raise ValueError(
+                    f"Unknown semantic finding severity '{raw_sev}' for {cid}; expected one of {sorted(SEMANTIC_SEV_ALIASES)}"
+                )
+            norm_sev = SEMANTIC_SEV_ALIASES[raw_sev]
+            semantic_findings.append(
+                {
+                    "canonical_id": cid,
+                    "rule_id": str(sf.get("rule_id") or parts[2]),
+                    "module_id": parts[1],
+                    "tool": str(sf.get("tool") or "clean-room-auditor"),
+                    "severity": norm_sev,
+                    "evidence_tier": "STATIC_LLM_INFERRED",
+                    "file": str(sf.get("file", "unknown")),
+                    "line": int(sf.get("line", 1)),
+                    "message": str(sf.get("message") or sf.get("rationale") or ""),
+                }
+            )
+
+    deduped = deduplicate(raw_findings + semantic_findings)
     counts = {
         "blocker": sum(1 for f in deduped if f["severity"] == "BLOCKER"),
         "major": sum(1 for f in deduped if f["severity"] == "MAJOR"),
@@ -120,13 +178,18 @@ def ingest_reports(reports_dir: Path, required_tools: list[str]) -> tuple[int, d
             "schema_version": "1.2.0",
             "exit_code": 3,
             "evidence_tier": "UNVERIFIED_MISSING_TOOL",
+            "tooling_gate_status": "UNVERIFIED_MISSING_TOOL",
+            "ship_prohibited": True,
             "required_tools_checked": required_tools,
             "verified_tools": present_tools,
             "missing_or_failed_tools": missing,
-            "max_allowed_verdict": "ITERATE",
             "verdict": verdict,
             "counts": counts,
             "blocking_ids": blocking_ids,
+            "findings_by_tier": {
+                "TOOL_VERIFIED": [f for f in deduped if f["evidence_tier"] == "TOOL_VERIFIED"],
+                "STATIC_LLM_INFERRED": [f for f in deduped if f["evidence_tier"] == "STATIC_LLM_INFERRED"],
+            },
             "findings": deduped,
         }
 
@@ -136,12 +199,18 @@ def ingest_reports(reports_dir: Path, required_tools: list[str]) -> tuple[int, d
         "schema_version": "1.2.0",
         "exit_code": exit_code,
         "evidence_tier": "TOOL_VERIFIED",
+        "tooling_gate_status": "TOOL_VERIFIED",
+        "ship_prohibited": verdict != "SHIP",
         "required_tools_checked": required_tools,
         "verified_tools": present_tools,
         "missing_or_failed_tools": [],
         "verdict": verdict,
         "counts": counts,
         "blocking_ids": blocking_ids,
+        "findings_by_tier": {
+            "TOOL_VERIFIED": [f for f in deduped if f["evidence_tier"] == "TOOL_VERIFIED"],
+            "STATIC_LLM_INFERRED": [f for f in deduped if f["evidence_tier"] == "STATIC_LLM_INFERRED"],
+        },
         "findings": deduped,
     }
 
@@ -207,6 +276,7 @@ def main() -> int:
     parser.add_argument("--reports", type=Path, default=None, help="Directory containing <tool>.sarif files")
     parser.add_argument("--run-tools", type=Path, default=None, help="Execute installed Tier B tools + Tier A scanner against target directory before ingesting")
     parser.add_argument("--required-tools", type=str, default=",".join(REQUIRED_TOOLS), help="Comma-separated required tools")
+    parser.add_argument("--semantic-findings", type=Path, default=None, help="Optional JSON file of Clean-Room STATIC_LLM_INFERRED findings")
     parser.add_argument("--out", type=Path, default=None, help="Write normalized JSON summary to path")
     parser.add_argument("--verify-envelope", type=Path, default=None, help="Verify JSON Verdict Envelope human_signoff invariants")
     parser.add_argument("--pr-author", type=str, default=None, help="PR author identity for independent approver check")
@@ -224,7 +294,11 @@ def main() -> int:
     req = [t.strip() for t in args.required_tools.split(",") if t.strip()]
     if args.run_tools:
         run_tier_b_tools(args.run_tools.resolve(), args.reports.resolve(), req)
-    rc, summary = ingest_reports(args.reports, req)
+    try:
+        rc, summary = ingest_reports(args.reports, req, semantic_findings_path=args.semantic_findings)
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc), "exit_code": 3}, indent=2), file=sys.stderr)
+        return 3
     rendered = json.dumps(summary, indent=2)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
