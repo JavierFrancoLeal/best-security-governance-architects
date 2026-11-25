@@ -162,7 +162,7 @@ def validate_eval_suites(repo_root: Path, scanner: Path | None = None) -> list[s
                 if skill_name and skill_name != "security-director":
                     cmd.extend(["--module", skill_name])
                 proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                if proc.returncode not in (0, 2) or not proc.stdout.strip():
+                if proc.returncode not in (0, 1, 2) or not proc.stdout.strip():
                     errors.append(f"{path}:{case['id']}: scanner failed rc={proc.returncode}")
                     continue
                 out = json.loads(proc.stdout)
@@ -194,7 +194,7 @@ def run_layer1(cpu_dir: Path, sem_dir: Path, scanner: Path, use_semgrep: bool, u
         capture_output=True, text=True, check=False,
     )
     runtime_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-    if proc.returncode not in (0, 2) or not proc.stdout.strip():
+    if proc.returncode not in (0, 1, 2) or not proc.stdout.strip():
         return {
             "evidence_tier": "UNVERIFIED_MISSING_TOOL",
             "verdict": "ITERATE",
@@ -249,7 +249,7 @@ def run_layer1(cpu_dir: Path, sem_dir: Path, scanner: Path, use_semgrep: bool, u
     # Fail-closed SAST-zero precondition on Layer 2 semantic fixtures.
     sem_proc = subprocess.run([sys.executable, str(scanner), "--target", str(sem_dir), "--format", "json"],
                               capture_output=True, text=True, check=False)
-    sem_ok = sem_proc.returncode in (0, 2) and bool(sem_proc.stdout.strip())
+    sem_ok = sem_proc.returncode in (0, 1, 2) and bool(sem_proc.stdout.strip())
     sem_blockers = (
         [f for f in json.loads(sem_proc.stdout).get("findings", []) if f.get("severity") == "BLOCKER"]
         if sem_ok else [{"error": "semantic_sast_scan_failed"}]

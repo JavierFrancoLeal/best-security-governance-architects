@@ -762,17 +762,18 @@ def collect_files(target: Path, diff_only: str | None) -> tuple[list[Path], dict
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Tier A deterministic CPU security pre-scanner (security-governance v1.2.0).")
-    parser.add_argument("--root", "--target", dest="target", type=Path, default=Path("."), help="Target repository root, directory, or file")
+    parser = argparse.ArgumentParser(description="Tier A deterministic CPU security pre-scanner (security-governance v1.3.0).")
+    parser.add_argument("target_pos", nargs="?", type=Path, default=None, help="Target repository root, directory, or file")
+    parser.add_argument("--root", "--target", dest="target_opt", type=Path, default=None, help="Target repository root, directory, or file")
     parser.add_argument("--diff-only", type=str, default=None, help="Restrict scan to files changed since git ref")
     parser.add_argument("--module", type=str, default=None, help="Optional filter for a single module slug")
     parser.add_argument("--format", choices=["json", "sarif"], default="json", help="Stdout output format")
-    parser.add_argument("--json-output", type=Path, default=None, help="Write JSON report to path")
-    parser.add_argument("--sarif-output", type=Path, default=None, help="Write SARIF 2.1.0 report to path")
+    parser.add_argument("--json-output", "--json-out", dest="json_output", type=Path, default=None, help="Write JSON report to path")
+    parser.add_argument("--sarif-output", "--sarif-out", dest="sarif_output", type=Path, default=None, help="Write SARIF 2.1.0 report to path")
     parser.add_argument("--spdx-policy", type=str, default=None, help="Optional comma-separated SPDX license allowlist")
     args = parser.parse_args()
 
-    target = args.target.resolve()
+    target = (args.target_opt or args.target_pos or Path(".")).resolve()
     if not target.exists():
         print(json.dumps({"error": f"Target does not exist: {target}", "exit_code": 3}), file=sys.stderr)
         return 3
@@ -814,11 +815,12 @@ def main() -> int:
         "major": sum(1 for f in deduped if f["severity"] == "MAJOR"),
         "minor": sum(1 for f in deduped if f["severity"] == "MINOR"),
     }
-    exit_code = 2 if counts["blocker"] >= 1 else 0
+    exit_code = 2 if counts["blocker"] >= 1 else (1 if counts["major"] >= 1 else 0)
     duration_ms = round((time.perf_counter() - t0) * 1000.0, 2)
 
     json_payload = {
-        "schema_version": SCANNER_VERSION,
+        "schema_version": "1.3.0",
+        "suite_id": "security-governance",
         "scanner": SCANNER_NAME,
         "scanner_version": SCANNER_VERSION,
         "exit_code": exit_code,
